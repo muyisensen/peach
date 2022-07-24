@@ -5,37 +5,13 @@ import (
 )
 
 type (
-	nodePoolOptions struct {
-		leafPoolSize    int
-		node4PoolSize   int
-		node16PoolSize  int
-		node48PoolSize  int
-		node256PoolSize int
-	}
-
-	setFunc func(opts nodePoolOptions) nodePoolOptions
-
 	nodePool struct {
-		opts        nodePoolOptions
+		opts        *index.AdaptiveRadixTreeOptions
 		mapNodeList map[kind][]treeNode
 	}
 )
 
-var (
-	defaultOptions = nodePoolOptions{
-		leafPoolSize:    512,
-		node4PoolSize:   256,
-		node16PoolSize:  128,
-		node48PoolSize:  64,
-		node256PoolSize: 32,
-	}
-)
-
-func newNodePool(funcs ...setFunc) *nodePool {
-	opts := defaultOptions
-	for _, f := range funcs {
-		opts = f(opts)
-	}
+func newNodePool(opts *index.AdaptiveRadixTreeOptions) *nodePool {
 	np := &nodePool{opts: opts}
 
 	np.newNodeLeafList()
@@ -134,31 +110,31 @@ func (np *nodePool) Downgrade(no treeNode) treeNode {
 }
 
 func (np *nodePool) newNodeLeafList() {
-	for i := 0; i < np.opts.leafPoolSize; i++ {
+	for i := 0; i < np.opts.NodeLeafPoolSize; i++ {
 		np.mapNodeList[kindLeaf] = append(np.mapNodeList[kindLeaf], &nodeLeaf{})
 	}
 }
 
 func (np *nodePool) newNode4List() {
-	for i := 0; i < np.opts.node4PoolSize; i++ {
+	for i := 0; i < np.opts.Node4PoolSize; i++ {
 		np.mapNodeList[kindNode4] = append(np.mapNodeList[kindNode4], &node4{})
 	}
 }
 
 func (np *nodePool) newNode16List() {
-	for i := 0; i < np.opts.node16PoolSize; i++ {
+	for i := 0; i < np.opts.Node16PoolSize; i++ {
 		np.mapNodeList[kindNode16] = append(np.mapNodeList[kindNode16], &node16{})
 	}
 }
 
 func (np *nodePool) newNode48List() {
-	for i := 0; i < np.opts.node48PoolSize; i++ {
+	for i := 0; i < np.opts.Node48PoolSize; i++ {
 		np.mapNodeList[kindNode48] = append(np.mapNodeList[kindNode48], &node48{})
 	}
 }
 
 func (np *nodePool) newNode256List() {
-	for i := 0; i < np.opts.node256PoolSize; i++ {
+	for i := 0; i < np.opts.Node256PoolSize; i++ {
 		np.mapNodeList[kindNode256] = append(np.mapNodeList[kindNode256], &node256{})
 	}
 }
@@ -166,15 +142,15 @@ func (np *nodePool) newNode256List() {
 func (np *nodePool) poolSize(k kind) int {
 	switch k {
 	case kindLeaf:
-		return np.opts.leafPoolSize
+		return np.opts.NodeLeafPoolSize
 	case kindNode4:
-		return np.opts.node4PoolSize
+		return np.opts.Node4PoolSize
 	case kindNode16:
-		return np.opts.node16PoolSize
+		return np.opts.Node16PoolSize
 	case kindNode48:
-		return np.opts.node48PoolSize
+		return np.opts.Node48PoolSize
 	case kindNode256:
-		return np.opts.node256PoolSize
+		return np.opts.Node256PoolSize
 	default:
 		return 0
 	}
@@ -418,39 +394,4 @@ func (np *nodePool) downgradeNode4(old *node16) *node4 {
 	np.Recycle(old)
 
 	return newNode
-}
-
-func SetNodeLeafPool(size int) setFunc {
-	return func(opts nodePoolOptions) nodePoolOptions {
-		opts.leafPoolSize = size
-		return opts
-	}
-}
-
-func SetNode4Pool(size int) setFunc {
-	return func(opts nodePoolOptions) nodePoolOptions {
-		opts.node4PoolSize = size
-		return opts
-	}
-}
-
-func SetNode16Pool(size int) setFunc {
-	return func(opts nodePoolOptions) nodePoolOptions {
-		opts.node16PoolSize = size
-		return opts
-	}
-}
-
-func SetNode48Pool(size int) setFunc {
-	return func(opts nodePoolOptions) nodePoolOptions {
-		opts.node48PoolSize = size
-		return opts
-	}
-}
-
-func SetNode256Pool(size int) setFunc {
-	return func(opts nodePoolOptions) nodePoolOptions {
-		opts.node256PoolSize = size
-		return opts
-	}
 }

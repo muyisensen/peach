@@ -16,9 +16,9 @@ type (
 	}
 )
 
-func NewAdaptiveRadixTree(opts ...setFunc) index.MemTable {
+func NewAdaptiveRadixTree(opts *index.AdaptiveRadixTreeOptions) index.MemTable {
 	return &tree{
-		pool: newNodePool(opts...),
+		pool: newNodePool(opts),
 	}
 }
 
