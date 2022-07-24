@@ -1,7 +1,5 @@
 package index
 
-import "time"
-
 type (
 	MemTable interface {
 		Get(key []byte) (value *MemValue)
@@ -21,9 +19,9 @@ type (
 
 type (
 	MemValue struct {
-		FileID      int
-		ValueOffset int64
-		ValueSize   int
-		ExprieAt    *time.Time
+		FileID    int
+		Offset    int64
+		Size      int
+		ExpiredAt *int64
 	}
 )
