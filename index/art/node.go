@@ -5,6 +5,12 @@ import "github.com/muyisensen/peach/index"
 type kind int
 
 const (
+	kindLeaf kind = iota + 1
+	kindNode4
+	kindNode16
+	kindNode48
+	kindNode256
+
 	node4Max   = 4
 	node4Min   = 2
 	node16Max  = 16
@@ -13,12 +19,6 @@ const (
 	node48Min  = 17
 	node256Max = 256
 	node256Min = 49
-
-	kindLeaf kind = iota + 1
-	kindNode4
-	kindNode16
-	kindNode48
-	kindNode256
 )
 
 type treeNode interface {
@@ -138,10 +138,6 @@ func (l *nodeLeaf) LastChild() *treeNode {
 	return nil
 }
 
-func NewNode4() treeNode {
-	return &node4{}
-}
-
 func (no *node4) Kind() kind {
 	return kindNode4
 }
@@ -180,11 +176,15 @@ func (no *node4) FindChild(b []byte) *treeNode {
 }
 
 func (no *node4) InsertChild(child treeNode) (success bool) {
-	if isNil(child) || no.numOfChild+1 > node4Max {
+	if isNil(child) {
 		return false
 	}
 
 	childKey := child.Key()
+	if len(childKey) > 0 && no.numOfChild+1 > node4Max {
+		return false
+	}
+
 	if len(childKey) == 0 {
 		no.zeroLeaf = child
 		return true
@@ -247,10 +247,11 @@ func (no *node4) ListAllChild() (sorted []treeNode) {
 }
 
 func (no *node4) FirstChild() *treeNode {
+	if !isNil(no.zeroLeaf) {
+		return &no.zeroLeaf
+	}
+
 	if no.numOfChild == 0 {
-		if !isNil(no.zeroLeaf) {
-			return &no.zeroLeaf
-		}
 		return nil
 	}
 
@@ -266,10 +267,6 @@ func (no *node4) LastChild() *treeNode {
 	}
 
 	return &no.children[no.numOfChild-1]
-}
-
-func NewNode16() treeNode {
-	return &node16{}
 }
 
 func (no *node16) Kind() kind {
@@ -310,11 +307,15 @@ func (no *node16) FindChild(b []byte) *treeNode {
 }
 
 func (no *node16) InsertChild(child treeNode) (success bool) {
-	if isNil(child) || no.numOfChild+1 > node16Max {
+	if isNil(child) {
 		return false
 	}
 
 	childKey := child.Key()
+	if len(childKey) > 0 && no.numOfChild+1 > node16Max {
+		return false
+	}
+
 	if len(childKey) == 0 {
 		no.zeroLeaf = child
 		return true
@@ -377,10 +378,11 @@ func (no *node16) ListAllChild() (sorted []treeNode) {
 }
 
 func (no *node16) FirstChild() *treeNode {
+	if !isNil(no.zeroLeaf) {
+		return &no.zeroLeaf
+	}
+
 	if no.numOfChild == 0 {
-		if !isNil(no.zeroLeaf) {
-			return &no.zeroLeaf
-		}
 		return nil
 	}
 
@@ -396,10 +398,6 @@ func (no *node16) LastChild() *treeNode {
 	}
 
 	return &no.children[no.numOfChild-1]
-}
-
-func NewNode48() treeNode {
-	return &node48{}
 }
 
 func (no *node48) Kind() kind {
@@ -443,11 +441,15 @@ func (no *node48) FindChild(b []byte) *treeNode {
 }
 
 func (no *node48) InsertChild(child treeNode) (success bool) {
-	if isNil(child) || no.numOfChild+1 > node48Max {
+	if isNil(child) {
 		return false
 	}
 
 	childKey := child.Key()
+	if len(childKey) > 0 && no.numOfChild+1 > node48Max {
+		return false
+	}
+
 	if len(childKey) == 0 {
 		no.zeroLeaf = child
 		return true
@@ -510,10 +512,12 @@ func (no *node48) FirstChild() *treeNode {
 		return &no.zeroLeaf
 	}
 
-	for c := 0; c < 256; c++ {
-		i, j := c>>6, c%64
-		if no.presents[i]&(1<<j) != 0 {
-			return &no.children[no.keys[c]]
+	if no.numOfChild > 0 {
+		for c := 0; c < 256; c++ {
+			i, j := c>>6, c%64
+			if no.presents[i]&(1<<j) != 0 {
+				return &no.children[no.keys[c]]
+			}
 		}
 	}
 
@@ -521,10 +525,12 @@ func (no *node48) FirstChild() *treeNode {
 }
 
 func (no *node48) LastChild() *treeNode {
-	for c := 255; c >= 0; c-- {
-		i, j := c>>6, c%64
-		if no.presents[i]&(1<<j) != 0 {
-			return &no.children[no.keys[c]]
+	if no.numOfChild > 0 {
+		for c := 255; c >= 0; c-- {
+			i, j := c>>6, c%64
+			if no.presents[i]&(1<<j) != 0 {
+				return &no.children[no.keys[c]]
+			}
 		}
 	}
 
@@ -533,10 +539,6 @@ func (no *node48) LastChild() *treeNode {
 	}
 
 	return nil
-}
-
-func NewNode256() treeNode {
-	return &node256{}
 }
 
 func (no *node256) Kind() kind {
@@ -577,7 +579,7 @@ func (no *node256) FindChild(b []byte) *treeNode {
 }
 
 func (no *node256) InsertChild(child treeNode) (success bool) {
-	if isNil(child) || no.numOfChild+1 > node256Max {
+	if isNil(child) {
 		return false
 	}
 
@@ -589,10 +591,11 @@ func (no *node256) InsertChild(child treeNode) (success bool) {
 
 	char := childKey[0]
 	i, j := char>>6, char%64
-
-	no.presents[i] |= (1 << j)
+	if no.presents[i]&(1<<j) == 0 {
+		no.numOfChild++
+		no.presents[i] |= (1 << j)
+	}
 	no.children[char] = child
-	no.numOfChild++
 	return true
 }
 
@@ -647,7 +650,7 @@ func (no *node256) FirstChild() *treeNode {
 }
 
 func (no *node256) LastChild() *treeNode {
-	for c := 255; c <= 0; c-- {
+	for c := 255; c >= 0; c-- {
 		i, j := c>>6, c%64
 		if no.presents[i]&(1<<j) != 0 {
 			return &no.children[c]

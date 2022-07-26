@@ -2,17 +2,18 @@ package art
 
 import (
 	"github.com/muyisensen/peach/index"
+	"github.com/muyisensen/peach/utils"
 )
 
 type (
 	nodePool struct {
 		opts        *index.AdaptiveRadixTreeOptions
-		mapNodeList map[kind][]treeNode
+		mapNodeList map[kind]*utils.LinkedList
 	}
 )
 
 func newNodePool(opts *index.AdaptiveRadixTreeOptions) *nodePool {
-	np := &nodePool{opts: opts}
+	np := &nodePool{opts: opts, mapNodeList: map[kind]*utils.LinkedList{}}
 
 	np.newNodeLeafList()
 	np.newNode4List()
@@ -25,19 +26,21 @@ func newNodePool(opts *index.AdaptiveRadixTreeOptions) *nodePool {
 
 func (np *nodePool) Alloc(k kind) treeNode {
 	list, ok := np.mapNodeList[k]
-	if !ok {
+	if !ok || list == nil {
 		return nil
 	}
 
 	size := np.poolSize(k)
-	if len(list) < size/8 {
+	if list.Size() <= size/8 {
 		for i := 0; i < size/4; i++ {
-			list = append(list, np.newNode(k))
+			list.Append(np.newNode(k))
 		}
 	}
 
-	node, list := list[0], list[1:]
-	np.mapNodeList[k] = list
+	node, ok := list.RemoveHead().(treeNode)
+	if !ok {
+		return nil
+	}
 	return node
 }
 
@@ -58,11 +61,10 @@ func (np *nodePool) Recycle(no treeNode) {
 		return
 	}
 
-	list = append(list, np.clean(no))
-	if len(list) > np.poolSize(no.Kind())*2 {
-		list = list[:len(list)/2]
+	list.Append(np.clean(no))
+	if list.Size() >= np.poolSize(no.Kind())*4 {
+		list.Truncate(list.Size() / 2)
 	}
-	np.mapNodeList[no.Kind()] = list
 }
 
 func (np *nodePool) Upgrade(no treeNode) treeNode {
@@ -93,7 +95,7 @@ func (np *nodePool) Downgrade(no treeNode) treeNode {
 	}
 
 	k := no.Kind()
-	if no.NumOfChild() < np.minNodeSize(k) {
+	if no.NumOfChild() >= np.minNodeSize(k) {
 		return no
 	}
 
@@ -104,38 +106,65 @@ func (np *nodePool) Downgrade(no treeNode) treeNode {
 		return np.downgradeNode16(no.(*node48))
 	case kindNode16:
 		return np.downgradeNode4(no.(*node16))
+	case kindNode4:
+		return np.pathCompression(no.(*node4))
 	default:
 		return no
 	}
 }
 
 func (np *nodePool) newNodeLeafList() {
+	list, ok := np.mapNodeList[kindLeaf]
+	if !ok || list == nil {
+		list = utils.NewLinkedList()
+		np.mapNodeList[kindLeaf] = list
+	}
 	for i := 0; i < np.opts.NodeLeafPoolSize; i++ {
-		np.mapNodeList[kindLeaf] = append(np.mapNodeList[kindLeaf], &nodeLeaf{})
+		list.Append(&nodeLeaf{})
 	}
 }
 
 func (np *nodePool) newNode4List() {
+	list, ok := np.mapNodeList[kindNode4]
+	if !ok || list == nil {
+		list = utils.NewLinkedList()
+		np.mapNodeList[kindNode4] = list
+	}
 	for i := 0; i < np.opts.Node4PoolSize; i++ {
-		np.mapNodeList[kindNode4] = append(np.mapNodeList[kindNode4], &node4{})
+		list.Append(&node4{})
 	}
 }
 
 func (np *nodePool) newNode16List() {
+	list, ok := np.mapNodeList[kindNode16]
+	if !ok || list == nil {
+		list = utils.NewLinkedList()
+		np.mapNodeList[kindNode16] = list
+	}
 	for i := 0; i < np.opts.Node16PoolSize; i++ {
-		np.mapNodeList[kindNode16] = append(np.mapNodeList[kindNode16], &node16{})
+		np.mapNodeList[kindNode16].Append(&node16{})
 	}
 }
 
 func (np *nodePool) newNode48List() {
+	list, ok := np.mapNodeList[kindNode48]
+	if !ok || list == nil {
+		list = utils.NewLinkedList()
+		np.mapNodeList[kindNode48] = list
+	}
 	for i := 0; i < np.opts.Node48PoolSize; i++ {
-		np.mapNodeList[kindNode48] = append(np.mapNodeList[kindNode48], &node48{})
+		np.mapNodeList[kindNode48].Append(&node48{})
 	}
 }
 
 func (np *nodePool) newNode256List() {
+	list, ok := np.mapNodeList[kindNode256]
+	if !ok || list == nil {
+		list = utils.NewLinkedList()
+		np.mapNodeList[kindNode256] = list
+	}
 	for i := 0; i < np.opts.Node256PoolSize; i++ {
-		np.mapNodeList[kindNode256] = append(np.mapNodeList[kindNode256], &node256{})
+		np.mapNodeList[kindNode256].Append(&node256{})
 	}
 }
 
@@ -394,4 +423,26 @@ func (np *nodePool) downgradeNode4(old *node16) *node4 {
 	np.Recycle(old)
 
 	return newNode
+}
+
+func (np *nodePool) pathCompression(old *node4) treeNode {
+	switch {
+	case old.NumOfChild() == 0 && !isNil(old.zeroLeaf):
+	case old.NumOfChild() == 1 && isNil(old.zeroLeaf):
+	default:
+		return old
+	}
+
+	child := old.zeroLeaf
+	if isNil(child) {
+		child = old.children[0]
+	}
+	old.RemoveChild(child.Key())
+
+	newKey := make([]byte, 0, len(old.Key())+len(child.Key()))
+	newKey = append(newKey, old.Key()...)
+	newKey = append(newKey, child.Key()...)
+	child.SetKey(newKey)
+	np.Recycle(old)
+	return child
 }
