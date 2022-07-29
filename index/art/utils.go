@@ -3,7 +3,7 @@ package art
 import "reflect"
 
 func isNil(no treeNode) bool {
-	return reflect.ValueOf(no).IsNil()
+	return no == nil || reflect.ValueOf(no).IsNil()
 }
 
 func minimum(a, b int) int {

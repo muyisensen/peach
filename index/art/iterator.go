@@ -9,7 +9,6 @@ import (
 
 type (
 	iterator struct {
-		t        *tree
 		stack    *utils.SimpleStack
 		nextLeaf treeNode
 	}
@@ -23,15 +22,12 @@ type (
 var _ index.Iterator = &iterator{}
 
 func newIterator(t *tree) *iterator {
-	stack := &utils.SimpleStack{}
+	stack := utils.NewSimpleStack(128)
 	stack.Push(&packet{node: *(t.root), visited: false})
-	return &iterator{stack: stack, t: t}
+	return &iterator{stack: stack}
 }
 
 func (i *iterator) HasNext() bool {
-	i.t.mu.RLock()
-	defer i.t.mu.RUnlock()
-
 	i.nextLeaf = nil
 	for i.stack.Size() > 0 {
 		elem := i.stack.Pop()
@@ -65,9 +61,6 @@ func (i *iterator) HasNext() bool {
 }
 
 func (i *iterator) Next() (key []byte, value *index.MemValue) {
-	i.t.mu.RLock()
-	defer i.t.mu.RUnlock()
-
 	if isNil(i.nextLeaf) {
 		return
 	}

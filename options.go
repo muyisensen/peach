@@ -15,8 +15,6 @@ type (
 
 		ArtOpt *index.AdaptiveRadixTreeOptions
 	}
-
-	optFunc func(opts *Options)
 )
 
 func DefaultOptions(dbPath string) *Options {
@@ -31,17 +29,5 @@ func DefaultOptions(dbPath string) *Options {
 			Node48PoolSize:   64,
 			Node256PoolSize:  32,
 		},
-	}
-}
-
-func LogFileGCInterval(interval time.Duration) optFunc {
-	return func(opts *Options) {
-		opts.LogFileGCInterval = interval
-	}
-}
-
-func LogFileSizeThreshold(threshold int64) optFunc {
-	return func(opts *Options) {
-		opts.LogFileSizeThreshold = threshold
 	}
 }

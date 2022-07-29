@@ -2,14 +2,12 @@ package art
 
 import (
 	"bytes"
-	"sync"
 
 	"github.com/muyisensen/peach/index"
 )
 
 type (
 	tree struct {
-		mu   sync.RWMutex
 		root *treeNode
 		pool *nodePool
 		size int64
@@ -27,12 +25,8 @@ func (t *tree) Get(key []byte) (value *index.MemValue) {
 		return nil
 	}
 
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
 	cp := t.root
 	for cp != nil {
-
 		var (
 			current = *cp
 			cKey    = current.Key()
@@ -64,9 +58,6 @@ func (t *tree) Put(key []byte, value *index.MemValue) (replaced *index.MemValue)
 	if len(key) == 0 || value == nil {
 		return
 	}
-
-	t.mu.Lock()
-	defer t.mu.Unlock()
 
 	if t.root == nil {
 		newNode := t.pool.NewLeaf(key, value)
@@ -128,9 +119,6 @@ func (t *tree) Delete(key []byte) (deleted *index.MemValue) {
 		return nil
 	}
 
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
 	if no := *t.root; no.Kind() == kindLeaf {
 		if bytes.Equal(key, no.Key()) {
 			deleted = no.Value()
@@ -187,9 +175,6 @@ func (t *tree) Minimum() (key []byte, value *index.MemValue) {
 		return
 	}
 
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
 	cp, keys := t.root, make([]byte, 0)
 	for cp != nil {
 		current := *cp
@@ -215,9 +200,6 @@ func (t *tree) Maximum() (key []byte, value *index.MemValue) {
 	if t.root == nil {
 		return
 	}
-
-	t.mu.RLock()
-	defer t.mu.RUnlock()
 
 	cp, keys := t.root, make([]byte, 0)
 	for cp != nil {
