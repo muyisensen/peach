@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/muyisensen/peach/index"
+	"github.com/muyisensen/peach/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,8 +25,17 @@ func TestLogFile(t *testing.T) {
 	offset := int64(0)
 	les := make([]*LogEntry, 0, 1024)
 	vals := make([]*index.MemValue, 0, 1024)
-	for i := 0; i < 1024; i++ {
-		kv := []byte(uuid.New().String())
+	exist := make(map[string]struct{})
+
+	i := 0
+	for i < 1024 {
+		kv := utils.RandStringBytesMaskImprSrc(36)
+
+		if _, ok := exist[string(kv)]; ok {
+			continue
+		}
+		exist[string(kv)] = struct{}{}
+		i++
 
 		logEntryType, value := Normal, kv
 		if i%2 == 0 {

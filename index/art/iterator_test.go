@@ -6,8 +6,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/muyisensen/peach/index"
+	"github.com/muyisensen/peach/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,9 +46,16 @@ func TestIterator(t *testing.T) {
 		Node256PoolSize:  8,
 	})
 
-	kv := make([]*pair, 0, 100)
-	for i := 0; i < 100; i++ {
-		key := []byte(uuid.New().String())
+	kv, exist := make([]*pair, 0, 100), make(map[string]struct{})
+	i := 0
+	for i < 100 {
+		key := utils.RandStringBytesMaskImprSrc(36)
+		if _, ok := exist[string(key)]; ok {
+			continue
+		}
+		exist[string(key)] = struct{}{}
+		i++
+
 		value := &index.MemValue{
 			FileID: i,
 			Offset: int64(i * 10),
@@ -61,7 +68,7 @@ func TestIterator(t *testing.T) {
 	sort.Sort(pairs(kv))
 	it := tree.Iterate()
 
-	i := 0
+	i = 0
 	for it.HasNext() {
 		k, v := it.Next()
 		k1, v1 := kv[i].key, kv[i].value
