@@ -434,10 +434,7 @@ func (no *node48) FindChild(b []byte) *treeNode {
 		return nil
 	}
 
-	if idx := no.keys[char]; idx < no.numOfChild {
-		return &(no.children[idx])
-	}
-	return nil
+	return &(no.children[no.keys[char]])
 }
 
 func (no *node48) InsertChild(child treeNode) (success bool) {
