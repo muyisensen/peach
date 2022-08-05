@@ -1,6 +1,8 @@
 package art
 
-import "reflect"
+import (
+	"reflect"
+)
 
 func isNil(no treeNode) bool {
 	return no == nil || reflect.ValueOf(no).IsNil()
@@ -13,16 +15,10 @@ func minimum(a, b int) int {
 	return a
 }
 
-// large common prefix
-func largeCommonPerfix(a, b []byte) []byte {
-	minLen := minimum(len(a), len(b))
-
-	result := make([]byte, 0, minLen)
-	for i := 0; i < minLen; i++ {
-		if a[i] != b[i] {
-			break
-		}
-		result = append(result, a[i])
+func longestCommonPrefix(a, b []byte) int {
+	minLen, i := minimum(len(a), len(b)), 0
+	for i < minLen && a[i] == b[i] {
+		i++
 	}
-	return result
+	return i
 }

@@ -16,6 +16,7 @@ type (
 		fid  int
 		path string
 		file *os.File
+		size int64
 	}
 )
 
@@ -82,6 +83,7 @@ func (f *LogFile) Write(offset int64, le *LogEntry) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	f.size += int64(n)
 
 	return n, nil
 }
@@ -103,9 +105,15 @@ func (f *LogFile) Path() string {
 }
 
 func (f *LogFile) Size() (int64, error) {
+	if f.size > 0 {
+		return f.size, nil
+	}
+
 	stat, err := f.file.Stat()
 	if err != nil {
 		return 0, err
 	}
-	return stat.Size(), nil
+	f.size = stat.Size()
+
+	return f.size, nil
 }

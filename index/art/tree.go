@@ -25,7 +25,7 @@ func (t *tree) Get(key []byte) (value *index.MemValue) {
 		return nil
 	}
 
-	cp := t.root
+	cp, depth := t.root, 0
 	for cp != nil {
 		var (
 			current = *cp
@@ -33,22 +33,18 @@ func (t *tree) Get(key []byte) (value *index.MemValue) {
 		)
 
 		if current.Kind() == kindLeaf {
-			if bytes.Equal(key, cKey) {
+			if bytes.Equal(key[depth:], cKey) {
 				return current.Value()
 			}
 			return
 		}
 
-		if !bytes.HasPrefix(key, cKey) {
+		if !bytes.HasPrefix(key[depth:], cKey) {
 			return
 		}
 
-		key = key[len(cKey):]
-		b := []byte{}
-		if len(key) > 0 {
-			b = append(b, key[0])
-		}
-		cp = current.FindChild(b)
+		depth += len(cKey)
+		cp = current.FindChild(key[depth:])
 	}
 
 	return
@@ -66,28 +62,23 @@ func (t *tree) Put(key []byte, value *index.MemValue) (replaced *index.MemValue)
 		return
 	}
 
-	cp := t.root
+	cp, depth := t.root, 0
 	for cp != nil {
 		var (
 			current = *cp
 			cKey    = current.Key()
-			lcp     = largeCommonPerfix(key, cKey)
+			lcpIdx  = longestCommonPrefix(key[depth:], cKey)
 		)
 
-		if current.Kind() == kindLeaf && bytes.Equal(cKey, key) {
+		if current.Kind() == kindLeaf && bytes.Equal(cKey, key[depth:]) {
 			replaced = current.Value()
 			current.SetValue(value)
 			return
 		}
 
-		if current.Kind() != kindLeaf && len(cKey) == len(lcp) {
-			key = key[len(lcp):]
-			b := []byte{}
-			if len(key) > 0 {
-				b = append(b, key[0])
-			}
-
-			if child := current.FindChild(b); child != nil && *child != nil {
+		if current.Kind() != kindLeaf && len(cKey) == lcpIdx {
+			depth += lcpIdx
+			if child := current.FindChild(key[depth:]); child != nil && *child != nil {
 				cp = child
 				continue
 			}
@@ -96,16 +87,16 @@ func (t *tree) Put(key []byte, value *index.MemValue) (replaced *index.MemValue)
 			*cp = newNode
 			current = newNode
 
-			current.InsertChild(t.pool.NewLeaf(key, value))
+			current.InsertChild(t.pool.NewLeaf(key[depth:], value))
 			t.size++
 			return
 		}
 
-		current.SetKey(cKey[len(lcp):])
+		current.SetKey(cKey[lcpIdx:])
 		newNode := t.pool.Alloc(kindNode4)
-		newNode.SetKey(lcp)
+		newNode.SetKey(cKey[:lcpIdx])
 		newNode.InsertChild(current)
-		newNode.InsertChild(t.pool.NewLeaf(key[len(lcp):], value))
+		newNode.InsertChild(t.pool.NewLeaf(key[depth+lcpIdx:], value))
 		*cp = newNode
 		t.size++
 		return
@@ -130,33 +121,28 @@ func (t *tree) Delete(key []byte) (deleted *index.MemValue) {
 		return
 	}
 
-	cp := t.root
+	cp, depth := t.root, 0
 	for cp != nil {
 		var (
 			current = *cp
 			cKey    = current.Key()
 		)
 
-		if !bytes.HasPrefix(key, cKey) {
+		if !bytes.HasPrefix(key[depth:], cKey) {
 			return
 		}
 
-		key = key[len(cKey):]
-		b := []byte{}
-		if len(key) > 0 {
-			b = append(b, key[0])
-		}
-
-		p := current.FindChild(b)
+		depth += len(cKey)
+		p := current.FindChild(key[depth:])
 		if p == nil {
 			return
 		}
 		child := *p
 
 		if child.Kind() == kindLeaf {
-			if bytes.Equal(key, child.Key()) {
+			if bytes.Equal(key[depth:], child.Key()) {
 				deleted = child.Value()
-				t.pool.Recycle(current.RemoveChild(b))
+				t.pool.Recycle(current.RemoveChild(key[depth:]))
 				t.size--
 				*cp = t.pool.Downgrade(current)
 				return

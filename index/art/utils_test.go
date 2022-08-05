@@ -1,7 +1,6 @@
 package art
 
 import (
-	"reflect"
 	"testing"
 )
 
@@ -91,7 +90,7 @@ func Test_minimum(t *testing.T) {
 	}
 }
 
-func Test_largeCommonPerfix(t *testing.T) {
+func Test_longestCommonPrefix(t *testing.T) {
 	type args struct {
 		a []byte
 		b []byte
@@ -99,7 +98,7 @@ func Test_largeCommonPerfix(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want []byte
+		want int
 	}{
 		{
 			name: "case 1",
@@ -107,7 +106,7 @@ func Test_largeCommonPerfix(t *testing.T) {
 				a: []byte("abc"),
 				b: []byte("abcd"),
 			},
-			want: []byte("abc"),
+			want: 3,
 		},
 		{
 			name: "case 2",
@@ -115,7 +114,7 @@ func Test_largeCommonPerfix(t *testing.T) {
 				a: []byte("bc"),
 				b: []byte("abcd"),
 			},
-			want: []byte{},
+			want: 0,
 		},
 		{
 			name: "case 3",
@@ -123,7 +122,7 @@ func Test_largeCommonPerfix(t *testing.T) {
 				a: []byte{},
 				b: []byte("abcd"),
 			},
-			want: []byte{},
+			want: 0,
 		},
 		{
 			name: "case 4",
@@ -131,13 +130,13 @@ func Test_largeCommonPerfix(t *testing.T) {
 				a: nil,
 				b: nil,
 			},
-			want: []byte{},
+			want: 0,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := largeCommonPerfix(tt.args.a, tt.args.b); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("largeCommonPerfix() = %v, want %v", got, tt.want)
+			if got := longestCommonPrefix(tt.args.a, tt.args.b); got != tt.want {
+				t.Errorf("longestCommonPrefix() = %v, want %v", got, tt.want)
 			}
 		})
 	}
