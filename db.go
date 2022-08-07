@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -15,6 +16,10 @@ import (
 	"github.com/muyisensen/peach/index"
 	"github.com/muyisensen/peach/index/art"
 	"github.com/muyisensen/peach/utils"
+)
+
+const (
+	LockFileName = "LOCK"
 )
 
 var (
@@ -34,6 +39,7 @@ type (
 		index1          index.MemTable
 		inGc            bool
 		lastGCTime      time.Time
+		fileLock        *FileLock
 	}
 )
 
@@ -48,6 +54,11 @@ func New(opts *Options) (*DB, error) {
 		opts:            opts,
 		index0:          art.NewAdaptiveRadixTree(opts.ArtOpt),
 		archivedLogFile: make(map[int]*LogFile),
+		fileLock:        NewFlock(filepath.Join(opts.DBPath, LockFileName)),
+	}
+
+	if err := db.fileLock.TryLock(); err != nil {
+		return nil, err
 	}
 
 	if err := db.reload(); err != nil {
@@ -209,7 +220,7 @@ func (db *DB) Close() error {
 		}
 	}
 
-	return nil
+	return db.fileLock.ULock()
 }
 
 func (db *DB) Size() int64 {
