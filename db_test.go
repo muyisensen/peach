@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/muyisensen/peach/utils"
@@ -148,7 +149,13 @@ func TestLogFileGc(t *testing.T) {
 
 	infos, err := ioutil.ReadDir(dbPath)
 	assert.Nil(t, err)
-	assert.Len(t, infos, 1)
+	count := 0
+	for i := 0; i < len(infos); i++ {
+		if strings.HasPrefix(infos[i].Name(), LogFileNamePrefix) {
+			count++
+		}
+	}
+	assert.Equal(t, count, 1)
 
 	for _, kv := range kvs[5000:] {
 		value, err := db.Get(kv)
